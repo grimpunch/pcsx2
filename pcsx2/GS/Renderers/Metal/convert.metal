@@ -170,7 +170,7 @@ fragment float4 ps_filter_complex(ConvertShaderData data [[stage_in]], ConvertPS
 {
 	float2 texdim = float2(res.texture.get_width(), res.texture.get_height());
 
-	if (dfdy(data.t.y) * texdim.y > 0.5)
+	if (dfdy(data.t.y) * data.t.y > 0.5)
 	{
 		return res.sample(data.t);
 	}

@@ -88,7 +88,7 @@ namespace ImGuiFullscreen
 	static u32 s_menu_button_index = 0;
 	static u32 s_close_button_state = 0;
 	static bool s_focus_reset_queued = false;
-
+	static bool s_osd_align_right = false;
 	static LRUCache<std::string, std::shared_ptr<HostDisplayTexture>> s_texture_cache(128, true);
 	static std::shared_ptr<HostDisplayTexture> s_placeholder_texture;
 	static std::atomic_bool s_texture_load_thread_quit{false};
@@ -489,6 +489,11 @@ void ImGuiFullscreen::EndLayout()
 	const float notification_vertical_pos = GetNotificationVerticalPosition();
 	ImVec2 position(notification_margin, notification_vertical_pos * ImGui::GetIO().DisplaySize.y +
 											 ((notification_vertical_pos >= 0.5f) ? -notification_margin : notification_margin));
+	s_osd_align_right = true; // TODO: Remove when setting added.
+	if (s_osd_align_right)
+	{
+		position.x = ImGui::GetIO().DisplaySize.x - notification_margin; 
+	}
 	DrawBackgroundProgressDialogs(position, spacing);
 	DrawNotifications(position, spacing);
 	DrawToast();
@@ -2209,7 +2214,7 @@ void ImGuiFullscreen::DrawBackgroundProgressDialogs(ImVec2& position, float spac
 
 	for (const BackgroundProgressDialogData& data : s_background_progress_dialogs)
 	{
-		const float window_pos_x = position.x;
+		const float window_pos_x = s_osd_align_right ? position.x - window_width : position.x;
 		const float window_pos_y = position.y - ((s_notification_vertical_direction < 0.0f) ? window_height : 0.0f);
 
 		dl->AddRectFilled(ImVec2(window_pos_x, window_pos_y), ImVec2(window_pos_x + window_width, window_pos_y + window_height),
@@ -2327,19 +2332,21 @@ void ImGuiFullscreen::DrawNotifications(ImVec2& position, float spacing)
 			std::max((horizontal_padding * 2.0f) + badge_size + horizontal_spacing + std::max(title_size.x, text_size.x), min_width);
 		const float box_height = std::max((vertical_padding * 2.0f) + title_size.y + vertical_spacing + text_size.y, min_height);
 
+		const ImVec2 aligned_position(s_osd_align_right ? position.x - box_width : position.x, position.y);
+
 		float x_offset = 0.0f;
 		if (time_passed < EASE_IN_TIME)
 		{
-			const float disp = (box_width + position.x);
+			const float disp = (box_width + aligned_position.x);
 			x_offset = -(disp - (disp * Easing::InBack(time_passed / EASE_IN_TIME)));
 		}
 		else if (time_passed > (notif.duration - EASE_OUT_TIME))
 		{
-			const float disp = (box_width + position.x);
+			const float disp = (box_width + aligned_position.x);
 			x_offset = -(disp - (disp * Easing::OutBack((notif.duration - time_passed) / EASE_OUT_TIME)));
 		}
 
-		const ImVec2 box_min(position.x + x_offset, position.y - ((s_notification_vertical_direction < 0.0f) ? box_height : 0.0f));
+		const ImVec2 box_min(aligned_position.x + x_offset, position.y - ((s_notification_vertical_direction < 0.0f) ? box_height : 0.0f));
 		const ImVec2 box_max(box_min.x + box_width, box_min.y + box_height);
 
 		ImDrawList* dl = ImGui::GetForegroundDrawList();

@@ -78,6 +78,8 @@ static std::vector<u8> s_icon_font_data;
 
 static Common::Timer s_last_render_time;
 
+static bool  s_osd_align_right = false;
+
 #ifdef PCSX2_CORE
 // cached copies of WantCaptureKeyboard/Mouse, used to know when to dispatch events
 static std::atomic_bool s_imgui_wants_keyboard{false};
@@ -628,6 +630,8 @@ void ImGuiManager::DrawOSDMessages()
 
 	const auto now = std::chrono::steady_clock::now();
 
+	s_osd_align_right = true; // TODO: Remove when setting added.
+
 	auto iter = s_osd_active_messages.begin();
 	while (iter != s_osd_active_messages.end())
 	{
@@ -647,19 +651,40 @@ void ImGuiManager::DrawOSDMessages()
 
 		if (position_y >= ImGui::GetIO().DisplaySize.y)
 			break;
-
+		
 		const ImVec2 pos(position_x, position_y);
-		const ImVec2 text_size(
-			font->CalcTextSizeA(font->FontSize, max_width, max_width, msg.text.c_str(), msg.text.c_str() + msg.text.length()));
-		const ImVec2 size(text_size.x + padding * 2.0f, text_size.y + padding * 2.0f);
-		const ImVec4 text_rect(pos.x + padding, pos.y + padding, pos.x + size.x - padding, pos.y + size.y - padding);
 
-		ImDrawList* dl = ImGui::GetBackgroundDrawList();
-		dl->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0x21, 0x21, 0x21, alpha), rounding);
-		dl->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0x48, 0x48, 0x48, alpha), rounding);
-		dl->AddText(font, font->FontSize, ImVec2(text_rect.x, text_rect.y), IM_COL32(0xff, 0xff, 0xff, alpha), msg.text.c_str(),
-			msg.text.c_str() + msg.text.length(), max_width, &text_rect);
-		position_y += size.y + spacing;
+		if (s_osd_align_right)
+		{
+			const ImVec2 text_size(
+				font->CalcTextSizeA(font->FontSize, max_width, max_width, msg.text.c_str(), msg.text.c_str() + msg.text.length()));
+			const ImVec2 size(text_size.x + padding * 2.0f, text_size.y + padding * 2.0f);
+			const ImVec2 rightAlignedPos(max_width - size.x, position_y);
+			const ImVec4 text_rect(rightAlignedPos.x + padding, rightAlignedPos.y + padding, rightAlignedPos.x + size.x - padding, rightAlignedPos.y + size.y - padding);
+
+			ImDrawList* dl = ImGui::GetBackgroundDrawList();
+			dl->AddRectFilled(rightAlignedPos, ImVec2(rightAlignedPos.x + size.x, rightAlignedPos.y + size.y), IM_COL32(0x21, 0x21, 0x21, alpha), rounding);
+			dl->AddRect(rightAlignedPos, ImVec2(rightAlignedPos.x + size.x, rightAlignedPos.y + size.y), IM_COL32(0x48, 0x48, 0x48, alpha), rounding);
+			dl->AddText(font, font->FontSize, ImVec2(text_rect.x, text_rect.y), IM_COL32(0xff, 0xff, 0xff, alpha), msg.text.c_str(),
+				msg.text.c_str() + msg.text.length(), max_width, &text_rect);
+
+			position_y += size.y + spacing;
+		}
+		else if (s_osd_align_right == false)
+		{
+			const ImVec2 text_size(
+				font->CalcTextSizeA(font->FontSize, max_width, max_width, msg.text.c_str(), msg.text.c_str() + msg.text.length()));
+			const ImVec2 size(text_size.x + padding * 2.0f, text_size.y + padding * 2.0f);
+			const ImVec4 text_rect(pos.x + padding, pos.y + padding, pos.x + size.x - padding, pos.y + size.y - padding);
+
+			ImDrawList* dl = ImGui::GetBackgroundDrawList();
+			dl->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0x21, 0x21, 0x21, alpha), rounding);
+			dl->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), IM_COL32(0x48, 0x48, 0x48, alpha), rounding);
+			dl->AddText(font, font->FontSize, ImVec2(text_rect.x, text_rect.y), IM_COL32(0xff, 0xff, 0xff, alpha), msg.text.c_str(),
+				msg.text.c_str() + msg.text.length(), max_width, &text_rect);
+
+			position_y += size.y + spacing;
+		}
 	}
 }
 
